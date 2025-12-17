@@ -9,6 +9,20 @@ import {
 import { spawn } from "child_process";
 import crypto from "crypto";
 
+// Safe tools whitelist - excludes run_shell_command, browser_run_code, browser_evaluate, browser_file_upload
+const SAFE_TOOLS = [
+  // File System (read-only)
+  'list_directory', 'read_file',
+  // Codebase search
+  'search_file_content', 'glob', 'codebase_investigator',
+  // Browser Automation (Playwright) - same 11 safe tools as Codex wrapper
+  'browser_navigate', 'browser_click', 'browser_type', 'browser_press_key',
+  'browser_take_screenshot', 'browser_snapshot', 'browser_wait_for',
+  'browser_fill_form', 'browser_select_option', 'browser_hover', 'browser_handle_dialog',
+  // Utility
+  'save_memory', 'write_todos', 'google_web_search'
+];
+
 // Conversation management
 const maxConversations = 25;      // Max 25 conversations
 const conversationTTL = 7200000;   // 2 hours TTL
@@ -125,10 +139,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     cleanupConversations();
 
     return new Promise((resolve, reject) => {
-      const args = ["-p", prompt];
+      // Build args for agentic mode with safe tools whitelist
+      const args = [];
+
+      // Add model if specified
       if (model) {
-        args.unshift("-m", model);
+        args.push("-m", model);
       }
+
+      // Add safe tools whitelist (blocks run_shell_command)
+      for (const tool of SAFE_TOOLS) {
+        args.push("--allowed-tools", tool);
+      }
+
+      // Sandbox mode - restricts file system access outside project
+      args.push("--sandbox");
+
+      // Output format for easier parsing
+      args.push("-o", "text");
+
+      // Prompt as positional arg (agentic mode, not -p which is one-shot)
+      args.push(prompt);
 
       const gemini = spawn("gemini", args, {
         env: process.env,
@@ -214,15 +245,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const fullHistory = buildConversationHistory(historyMessages);
 
     return new Promise((resolve, reject) => {
-      // Use echo to pipe the full history to Gemini
-      const echo = spawn("echo", ["-e", fullHistory], {
-        env: process.env,
-      });
-
+      // Build args for agentic mode with safe tools whitelist
       const args = [];
+
+      // Add model if specified
       if (model) {
         args.push("-m", model);
       }
+
+      // Add safe tools whitelist (blocks run_shell_command)
+      for (const tool of SAFE_TOOLS) {
+        args.push("--allowed-tools", tool);
+      }
+
+      // Sandbox mode - restricts file system access outside project
+      args.push("--sandbox");
+
+      // Output format for easier parsing
+      args.push("-o", "text");
+
+      // Add full conversation history as positional argument
+      // (Gemini CLI v0.21+ requires positional args, not stdin pipe)
+      args.push(fullHistory);
 
       const gemini = spawn("gemini", args, {
         env: process.env,
@@ -230,9 +274,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       let stdout = "";
       let stderr = "";
-
-      // Pipe echo output to Gemini input
-      echo.stdout.pipe(gemini.stdin);
 
       gemini.stdout.on("data", (data) => {
         stdout += data.toString();
