@@ -9,19 +9,6 @@ import {
 import { spawn } from "child_process";
 import crypto from "crypto";
 
-// Safe tools whitelist - excludes run_shell_command, browser_run_code, browser_evaluate, browser_file_upload
-const SAFE_TOOLS = [
-  // File System (read-only)
-  'list_directory', 'read_file',
-  // Codebase search
-  'search_file_content', 'glob', 'codebase_investigator',
-  // Browser Automation (Playwright) - same 11 safe tools as Codex wrapper
-  'browser_navigate', 'browser_click', 'browser_type', 'browser_press_key',
-  'browser_take_screenshot', 'browser_snapshot', 'browser_wait_for',
-  'browser_fill_form', 'browser_select_option', 'browser_hover', 'browser_handle_dialog',
-  // Utility
-  'save_memory', 'write_todos', 'google_web_search'
-];
 
 // Conversation management
 const maxConversations = 25;      // Max 25 conversations
@@ -139,7 +126,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     cleanupConversations();
 
     return new Promise((resolve, reject) => {
-      // Build args for agentic mode with safe tools whitelist
+      // Build args for agentic mode (read-only via plan approval mode)
       const args = [];
 
       // Add model if specified
@@ -147,10 +134,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         args.push("-m", model);
       }
 
-      // Add safe tools whitelist (blocks run_shell_command)
-      for (const tool of SAFE_TOOLS) {
-        args.push("--allowed-tools", tool);
-      }
+      // Read-only mode - blocks all write/shell tools
+      args.push("--approval-mode", "plan");
 
       // Sandbox mode - restricts file system access outside project
       args.push("--sandbox");
@@ -245,7 +230,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const fullHistory = buildConversationHistory(historyMessages);
 
     return new Promise((resolve, reject) => {
-      // Build args for agentic mode with safe tools whitelist
+      // Build args for agentic mode (read-only via plan approval mode)
       const args = [];
 
       // Add model if specified
@@ -253,10 +238,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         args.push("-m", model);
       }
 
-      // Add safe tools whitelist (blocks run_shell_command)
-      for (const tool of SAFE_TOOLS) {
-        args.push("--allowed-tools", tool);
-      }
+      // Read-only mode - blocks all write/shell tools
+      args.push("--approval-mode", "plan");
 
       // Sandbox mode - restricts file system access outside project
       args.push("--sandbox");
