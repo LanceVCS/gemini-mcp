@@ -134,17 +134,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         args.push("-m", model);
       }
 
-      // Read-only mode - blocks all write/shell tools
+      // Defense-in-depth: --approval-mode plan blocks all write/shell tools,
+      // --sandbox enables filesystem sandbox. Gemini's --sandbox is boolean
+      // (unlike Codex where it takes a mode value).
       args.push("--approval-mode", "plan");
-
-      // Sandbox mode - restricts file system access outside project
       args.push("--sandbox");
 
       // Output format for easier parsing
       args.push("-o", "text");
 
-      // Prompt as positional arg (agentic mode, not -p which is one-shot)
-      args.push(prompt);
+      // Headless mode — -p ensures --approval-mode plan is enforced (no TTY to auto-approve)
+      args.push("-p", prompt);
 
       const gemini = spawn("gemini", args, {
         env: process.env,
@@ -238,18 +238,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         args.push("-m", model);
       }
 
-      // Read-only mode - blocks all write/shell tools
+      // Defense-in-depth: --approval-mode plan blocks all write/shell tools,
+      // --sandbox enables filesystem sandbox. Gemini's --sandbox is boolean
+      // (unlike Codex where it takes a mode value).
       args.push("--approval-mode", "plan");
-
-      // Sandbox mode - restricts file system access outside project
       args.push("--sandbox");
 
       // Output format for easier parsing
       args.push("-o", "text");
 
-      // Add full conversation history as positional argument
-      // (Gemini CLI v0.21+ requires positional args, not stdin pipe)
-      args.push(fullHistory);
+      // Headless mode — -p ensures --approval-mode plan is enforced (no TTY to auto-approve)
+      args.push("-p", fullHistory);
 
       const gemini = spawn("gemini", args, {
         env: process.env,
