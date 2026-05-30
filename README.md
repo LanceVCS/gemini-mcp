@@ -24,7 +24,7 @@ The Gemini CLI is stateless in headless mode (`gemini -p "..."`) — each invoca
 
 1. Clone the repository to the standard MCP servers location:
    ```bash
-   git clone <repo-url> ~/.claude/mcp-servers/gemini-mcp
+   git clone https://github.com/LanceVCS/gemini-mcp.git ~/.claude/mcp-servers/gemini-mcp
    cd ~/.claude/mcp-servers/gemini-mcp
    npm install
    ```
